@@ -1,4 +1,4 @@
-package com.zerosword.template
+package com.zerosword.swipe_anim
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4

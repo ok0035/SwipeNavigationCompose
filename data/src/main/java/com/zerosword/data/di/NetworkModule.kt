@@ -36,7 +36,6 @@ object NetworkModule {
         .addConverterFactory(gsonConverterFactory)
         .client(okHttpClient)
         .build()
-
     @Provides
     @Singleton
     fun providesApiResponseConverterFactory(): ApiResponseCallAdapterFactory =

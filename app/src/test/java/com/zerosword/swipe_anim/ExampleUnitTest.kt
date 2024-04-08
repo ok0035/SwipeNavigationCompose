@@ -1,4 +1,4 @@
-package com.zerosword.template
+package com.zerosword.swipe_anim
 
 import org.junit.Test
 

@@ -14,11 +14,11 @@ plugins {
 }
 
 android {
-    namespace = "com.zerosword.template"
+    namespace = "com.zerosword.swipe_anim"
     compileSdk = AppConfig.compileSdkVer
 
     defaultConfig {
-        applicationId = "com.zerosword.template"
+        applicationId = "com.zerosword.swipe_anim"
         minSdk = AppConfig.minSdkVer
         targetSdk = AppConfig.targetSdkVer
         versionCode = AppConfig.versionCode
