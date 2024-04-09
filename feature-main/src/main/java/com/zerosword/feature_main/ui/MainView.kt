@@ -3,6 +3,11 @@ package com.zerosword.feature_main.ui
 import android.app.Activity
 import android.os.Build
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.InfiniteTransition
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -21,14 +26,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerScope
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -45,24 +53,31 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
+import com.zerosword.feature_main.ui.shape.BottomArcShape
 import com.zerosword.feature_main.viewmodel.MainViewModel
 import com.zerosword.resources.R
 import com.zerosword.resources.ui.theme.DarkColorScheme
@@ -84,42 +99,12 @@ fun MainView(
     val viewModel: MainViewModel = hiltViewModel()
 
     SwipeScreen()
+//    CurvedBottomBox()
 
-}
-
-@Composable
-fun TemplateTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
-    content: @Composable () -> Unit
-) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
-    val view = LocalView.current
-    if (!view.isInEditMode) {
-        SideEffect {
-            val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = darkTheme
-        }
-    }
-
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
 }
 
 @OptIn(ExperimentalGlideComposeApi::class, ExperimentalFoundationApi::class)
+@Preview(showBackground = true)
 @Composable
 fun SwipeScreen() {
 
@@ -145,13 +130,13 @@ fun SwipeScreen() {
             LaunchedEffect(key1 = isDragEnded) {
                 val currentOffset = offsetX.value
                 val progress = currentOffset / maxWidth.value
-                val min = maxWidth.value * 0.6f
+                val min = 0f
                 val max = maxWidth.value
                 val duration =
-                    (((currentOffset / maxWidth.value - 0.6f) * 3000).coerceIn(0f, 3000f)).toInt()
+                    (((currentOffset / maxWidth.value) * 1000).coerceIn(0f, 3000f)).toInt()
                 println("current offset -> $progress")
 
-                if (progress < 0.8f)
+                if (progress < 0.5f)
                     offsetX.animateTo(
                         targetValue = min,
                         animationSpec = tween(
@@ -175,7 +160,7 @@ fun SwipeScreen() {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black)
+                    .background(Color.White)
                     .pointerInput(Unit) {
                         detectHorizontalDragGestures(
 
@@ -189,7 +174,7 @@ fun SwipeScreen() {
                             },
                             onHorizontalDrag = { change, dragAmount ->
                                 scope.launch {
-                                    val newOffset = (offsetX.value + (dragAmount / 3f)).coerceIn(
+                                    val newOffset = (offsetX.value + (dragAmount / 1.5f)).coerceIn(
                                         0f,
                                         maxWidth.value
                                     )
@@ -204,78 +189,101 @@ fun SwipeScreen() {
                 contentAlignment = Alignment.TopCenter,
             ) {
 
-                HorizontalPager(
-                    modifier = Modifier.fillMaxWidth().wrapContentHeight(),
-                    state = rememberPagerState { 3 },
-                    pageSpacing = 0.dp,
-                    userScrollEnabled = true,
-                    reverseLayout = false,
-                    contentPadding = PaddingValues(0.dp),
-                    beyondBoundsPageCount = 0,
-                    pageSize = PageSize.Fill,
-                    key = null,
-                    pageNestedScrollConnection = PagerDefaults.pageNestedScrollConnection(
-                        Orientation.Horizontal
-                    ),
-                    pageContent = {
-                        GlideImage(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .fillMaxHeight(0.7f)
-                                .background(Color.White),
-                            model =
-                                when(it) {
+                val circle1Width = width * 2.1f
+                val circle1Height = width * 2.24f
+
+                val circle2Width = width * 2.17f
+                val circle2Height = width * 2.26f
+
+                val infiniteTransition = rememberInfiniteTransition(label = "")
+
+                val rotation = infiniteTransition.animateFloat(
+                    initialValue = 0f,
+                    targetValue = 360f,
+                    animationSpec = infiniteRepeatable(
+                        // tween을 사용하여 애니메이션 지속 시간과 속도 곡선을 정의합니다.
+                        animation = tween(durationMillis = 20000, easing = androidx.compose.animation.core.LinearEasing),
+                        // RepeatMode.Restart를 사용하여 애니메이션이 끝날 때마다 처음부터 다시 시작합니다.
+                        repeatMode = RepeatMode.Restart
+                    ), label = ""
+                )
+
+
+                DrawCircle(modifier = Modifier
+                    .wrapContentSize()
+                    .graphicsLayer {
+                        translationX = circle2Width.value / 2f - circle2Width.value / 1.8f
+                        translationY = (height.value * 0.7f) - circle2Height.value * 1.45f
+                        rotationZ = rotation.value
+                    }
+                    .background(Color.Transparent),
+                    widthRate = 2.17f,
+                    heightRate = 2.26f,
+                    color = Color(0xFFDBE9FF)
+                )
+
+                DrawCircle(Modifier
+                    .wrapContentSize()
+                    .graphicsLayer {
+                        translationX = -circle1Width.value / 1.3f
+                        translationY = height.value * 0.7f - circle1Height.value * 1.35f
+                        rotationZ = rotation.value
+                    }
+                    .background(Color.Transparent),
+                    2.1f,
+                    2.24f,
+                    color = Color(0xFFE4F7FF)
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.7f)// 여기서는 Box의 크기를 지정해줍니다.
+                        .clip(BottomArcShape(1f - offsetX.value / width.value))
+                        .background(
+                            color = Color.White,
+                            shape = BottomArcShape(1f - offsetX.value / width.value)
+                        )
+                ) {
+                    // Box 내부에 들어갈 내용
+                    HorizontalPager(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .wrapContentHeight(),
+                        state = rememberPagerState { 3 },
+                        pageSpacing = 0.dp,
+                        userScrollEnabled = true,
+                        reverseLayout = false,
+                        contentPadding = PaddingValues(0.dp),
+                        beyondBoundsPageCount = 0,
+                        pageSize = PageSize.Fill,
+                        key = null,
+                        pageNestedScrollConnection = PagerDefaults.pageNestedScrollConnection(
+                            Orientation.Horizontal
+                        ),
+                        pageContent = {
+                            GlideImage(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .fillMaxHeight()
+                                    .background(Color.White),
+                                model = when (it) {
                                     0 -> R.drawable.test_image
                                     1 -> R.drawable.test_image2
                                     2 -> R.drawable.test_image3
                                     else -> R.drawable.test_image
-                                }
-                            ,
-                            contentScale = ContentScale.FillWidth,
-                            alignment = Alignment.TopCenter,
-                            contentDescription = null,
-                        )
-                    }
-                )
+                                },
+                                contentScale = ContentScale.Crop,
+                                alignment = Alignment.TopCenter,
+                                contentDescription = null,
+                            )
+                        }
+                    )
+                }
+
+
             }
 
-            MainClippingCircle(
-                Modifier
-                    .width(maxWidth * 10)
-                    .height(maxHeight * 10), scale = offsetX.value / maxWidth.value
-            )
-
-
-//        Box(
-//            modifier = Modifier
-//                .requiredWidth(swipeWidth)
-//                .fillMaxHeight()
-//                .background(Color.Transparent),
-//            contentAlignment = Alignment.TopStart
-//        ) {
-//
-//            Row(
-//                modifier = Modifier
-//                    .requiredWidth(swipeWidth)
-//                    .fillMaxHeight()
-//                    .offset(x = screenWidth / 2 + offsetX.dp),
-//            ) {
-//                Box(
-//                    modifier = Modifier
-//                        .requiredWidth(screenWidth)
-//                        .fillMaxHeight()
-//                        .background(Color.Transparent)
-//                )
-//
-//                Box(
-//                    modifier = Modifier
-//                        .width(screenWidth)
-//                        .fillMaxHeight()
-//                        .background(Color.Blue)
-//                )
-//            }
-//
-//        }
         }
 
         Box(
@@ -289,7 +297,7 @@ fun SwipeScreen() {
                     x = offsetX.value.dp - width
                 )
                 .alpha(
-                    (1f - ((width.value - offsetX.value) / (width.value * 0.6f * 0.416f))).coerceIn(
+                    (1f - ((width.value - offsetX.value) / (width.value * 0.416f))).coerceIn(
                         0f,
                         1f
                     )
@@ -325,6 +333,10 @@ fun MainClippingCircle(modifier: Modifier, scale: Float) {
                 )
             )
         }
+        drawRect(
+            color = Color.White,
+            size = newDrawingSize
+        )
         clipPath(clipPath, clipOp = ClipOp.Difference) {
             drawRect(
                 color = Color.White,
@@ -335,6 +347,35 @@ fun MainClippingCircle(modifier: Modifier, scale: Float) {
 }
 
 @Composable
+fun DrawCircle(modifier: Modifier = Modifier, widthRate: Float, heightRate: Float, color: Color, alpha: Float = 1f) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            // 타원의 실제 크기를 계산합니다.
+            val ovalWidth = size.width * widthRate
+            val ovalHeight = size.width * heightRate
+            // 타원을 Canvas의 중심에 위치시키기 위한 topLeft 계산
+            val topLeftX = (size.width - ovalWidth) / 2f
+            val topLeftY = (size.height - ovalHeight) / 2f
+
+            // 아크를 그려서 타원을 만듭니다.
+            drawArc(
+                color = color,
+                startAngle = 0f,
+                sweepAngle = 360f,
+                useCenter = false,
+                alpha = alpha,
+                topLeft = Offset(topLeftX, topLeftY),
+                size = Size(ovalWidth, ovalHeight)
+            )
+        }
+    }
+}
+
+
+@Composable
 fun MainSpotTextBox(
     modifier: Modifier = Modifier,
     title: String = "그라운드시소 서촌",
@@ -342,6 +383,7 @@ fun MainSpotTextBox(
 ) {
     Box(
         modifier = modifier
+            .background(Color.Transparent)
             .padding(start = 28.dp, end = 52.dp, top = 7.dp, bottom = 40.dp)
     ) {
         Column {
@@ -372,5 +414,29 @@ fun MainSpotTextBox(
 //@Preview(showBackground = true)
 @Composable
 fun MainPreview() {
-    SwipeScreen()
+    val context = LocalContext.current
+    val configuration = context.resources.configuration
+    val width =  configuration.screenWidthDp
+    val height = configuration.screenHeightDp
+
+//     BoxWithCircle(width = width.dp * 2.21f,  height = height.dp * 2.24f)
+//    EllipseWithDrawArc(width.dp * 2.21f, width.dp * 2.24f)
+}
+
+@Composable
+fun LargeCircleCentered() {
+    // Box를 사용하여 전체 화면을 채우고, 배경색을 설정합니다.
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.LightGray),
+        contentAlignment = Alignment.Center // Box 내용을 중앙에 위치시킵니다.
+    ) {
+        // 화면보다 큰 원을 생성합니다.
+        Box(
+            modifier = Modifier
+                .size(600.dp) // 원하는 크기로 설정합니다. 예: 화면보다 큰 600.dp
+                .background(Color.Blue, CircleShape) // 원 모양의 배경을 파란색으로 설정합니다.
+        )
+    }
 }
