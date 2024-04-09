@@ -126,13 +126,13 @@ fun SwipeScreen() {
     ConstraintLayout {
 
         val context = LocalContext.current
+        val scope = rememberCoroutineScope()
+
         val width = context.resources.configuration.screenWidthDp.dp
         val height = context.resources.configuration.screenHeightDp.dp
-        val scope = rememberCoroutineScope()
 
         val offsetX by remember { mutableStateOf(Animatable(width.value)) }
         var isDragEnded by remember { mutableStateOf(false) }
-        var isScrollDirection by remember { mutableFloatStateOf(0f) }
 
         val spotInfoTextBox = createRef()
 
