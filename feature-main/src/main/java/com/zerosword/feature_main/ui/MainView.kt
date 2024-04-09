@@ -2,13 +2,18 @@ package com.zerosword.feature_main.ui
 
 import android.app.Activity
 import android.os.Build
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,19 +22,29 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PageSize
+import androidx.compose.foundation.pager.PagerDefaults
+import androidx.compose.foundation.pager.PagerScope
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
@@ -40,10 +55,8 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.core.view.WindowCompat
@@ -59,6 +72,8 @@ import com.zerosword.resources.ui.theme.body14
 import com.zerosword.resources.ui.theme.gradientTextColor
 import com.zerosword.resources.ui.theme.title14
 import com.zerosword.resources.ui.theme.title24
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 @Composable
 fun MainView(
@@ -104,15 +119,7 @@ fun TemplateTheme(
     )
 }
 
-@Composable
-fun Greeting(message: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "$message!",
-        modifier = modifier
-    )
-}
-
-@OptIn(ExperimentalGlideComposeApi::class)
+@OptIn(ExperimentalGlideComposeApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun SwipeScreen() {
 
@@ -121,8 +128,13 @@ fun SwipeScreen() {
         val context = LocalContext.current
         val width = context.resources.configuration.screenWidthDp.dp
         val height = context.resources.configuration.screenHeightDp.dp
-        val spotInfoTextBox = createRef()
+        val scope = rememberCoroutineScope()
 
+        val offsetX by remember { mutableStateOf(Animatable(width.value)) }
+        var isDragEnded by remember { mutableStateOf(false) }
+        var isScrollDirection by remember { mutableFloatStateOf(0f) }
+
+        val spotInfoTextBox = createRef()
 
         BoxWithConstraints(
             modifier = Modifier
@@ -130,72 +142,108 @@ fun SwipeScreen() {
                 .height(height * 10)
         ) {
 
-            val circleSize1 = constraints.maxWidth * 6.38f
-            val circlePosX = constraints.maxWidth * 3.21f
-//        val circlePosX = -(constraints.maxWidth /8f)
-            val circlePosY = constraints.maxWidth * 4.87f
-//        val circlePosY = -(constraints.maxWidth /8f)
-            val swipeWidth = constraints.maxWidth * 2 // 스크린 너비의 두 배
-            var offsetX by remember { mutableFloatStateOf(maxWidth.value) }
+            LaunchedEffect(key1 = isDragEnded) {
+                val currentOffset = offsetX.value
+                val progress = currentOffset / maxWidth.value
+                val min = maxWidth.value * 0.6f
+                val max = maxWidth.value
+                val duration =
+                    (((currentOffset / maxWidth.value - 0.6f) * 3000).coerceIn(0f, 3000f)).toInt()
+                println("current offset -> $progress")
+
+                if (progress < 0.8f)
+                    offsetX.animateTo(
+                        targetValue = min,
+                        animationSpec = tween(
+                            durationMillis = duration
+                        )
+                    ) {
+                        isDragEnded = false
+                    }
+                else {
+                    offsetX.animateTo(
+                        targetValue = max,
+                        animationSpec = tween(
+                            durationMillis = duration
+                        )
+                    ) {
+                        isDragEnded = false
+                    }
+                }
+            }
 
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black)
                     .pointerInput(Unit) {
-                        detectHorizontalDragGestures { _, dragAmount ->
-                            offsetX += dragAmount / 3f
-                            offsetX = offsetX.coerceIn(maxWidth.value/2f, maxWidth.value)
-                            println("offset -> $offsetX")
-                        }
+                        detectHorizontalDragGestures(
+
+                            onDragEnd = {
+                                isDragEnded = true
+
+                            },
+                            onDragCancel = {
+                                isDragEnded = true
+
+                            },
+                            onHorizontalDrag = { change, dragAmount ->
+                                scope.launch {
+                                    val newOffset = (offsetX.value + (dragAmount / 3f)).coerceIn(
+                                        0f,
+                                        maxWidth.value
+                                    )
+                                    offsetX.snapTo(newOffset)
+                                    change.consume()
+                                    println("offset -> ${offsetX.value}")
+                                }
+                            }
+                        )
+
                     },
                 contentAlignment = Alignment.TopCenter,
             ) {
 
-                GlideImage(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .fillMaxHeight(0.7f)
-                        .background(Color.Cyan),
-                    model = R.drawable.test_image,
-                    contentScale = ContentScale.FillHeight,
-                    alignment = Alignment.TopCenter,
-                    contentDescription = null,
-                )
-
-            }
-
-            Canvas(
-                modifier = Modifier
-                    .width(maxWidth * 10)
-                    .height(maxHeight * 10)
-                    .background(Color.Transparent)
-            ) {
-                // 화면의 중앙에 원을 그립니다.
-                val newDrawingSize = Size(maxWidth.value * 10, maxHeight.value * 10)
-
-                val radius = circleSize1 / 2f * (offsetX / maxWidth.value)
-
-                val centerOffset = Offset(
-                    -maxWidth.value / 4f,
-                    -(maxWidth.value * 5)
-                )
-                // 원형 클리핑 경로 생성
-                val clipPath = Path().apply {
-                    addOval(
-                        Rect(
-                            centerOffset - Offset(radius, radius),
-                            centerOffset + Offset(radius, radius)
+                HorizontalPager(
+                    modifier = Modifier.fillMaxWidth().wrapContentHeight(),
+                    state = rememberPagerState { 3 },
+                    pageSpacing = 0.dp,
+                    userScrollEnabled = true,
+                    reverseLayout = false,
+                    contentPadding = PaddingValues(0.dp),
+                    beyondBoundsPageCount = 0,
+                    pageSize = PageSize.Fill,
+                    key = null,
+                    pageNestedScrollConnection = PagerDefaults.pageNestedScrollConnection(
+                        Orientation.Horizontal
+                    ),
+                    pageContent = {
+                        GlideImage(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .fillMaxHeight(0.7f)
+                                .background(Color.White),
+                            model =
+                                when(it) {
+                                    0 -> R.drawable.test_image
+                                    1 -> R.drawable.test_image2
+                                    2 -> R.drawable.test_image3
+                                    else -> R.drawable.test_image
+                                }
+                            ,
+                            contentScale = ContentScale.FillWidth,
+                            alignment = Alignment.TopCenter,
+                            contentDescription = null,
                         )
-                    )
-                }
-                clipPath(clipPath, clipOp = ClipOp.Difference) {
-                    drawRect(
-                        color = Color.White,
-                        size = newDrawingSize
-                    )
-                }
+                    }
+                )
             }
+
+            MainClippingCircle(
+                Modifier
+                    .width(maxWidth * 10)
+                    .height(maxHeight * 10), scale = offsetX.value / maxWidth.value
+            )
 
 
 //        Box(
@@ -237,10 +285,51 @@ fun SwipeScreen() {
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)
                 }
+                .offset(
+                    x = offsetX.value.dp - width
+                )
+                .alpha(
+                    (1f - ((width.value - offsetX.value) / (width.value * 0.6f * 0.416f))).coerceIn(
+                        0f,
+                        1f
+                    )
+                )
         ) {
-
             MainSpotTextBox()
+        }
+    }
+}
 
+@Composable
+fun MainClippingCircle(modifier: Modifier, scale: Float) {
+    Canvas(
+        modifier = modifier
+            .background(Color.Transparent)
+    ) {
+        // 화면의 중앙에 원을 그립니다.
+        val newDrawingSize = Size(size.width * 10, size.height * 10)
+        val circleDiameter = size.width * 6.38f
+
+        val radius = circleDiameter / 2f * scale
+
+        val centerOffset = Offset(
+            0f,
+            -(circleDiameter / 2f) + size.height / 1.6f
+        )
+        // 원형 클리핑 경로 생성
+        val clipPath = Path().apply {
+            addOval(
+                Rect(
+                    centerOffset - Offset(radius, radius),
+                    centerOffset + Offset(radius, radius)
+                )
+            )
+        }
+        clipPath(clipPath, clipOp = ClipOp.Difference) {
+            drawRect(
+                color = Color.White,
+                size = newDrawingSize
+            )
         }
     }
 }
@@ -280,7 +369,7 @@ fun MainSpotTextBox(
     }
 }
 
-@Preview(showBackground = true)
+//@Preview(showBackground = true)
 @Composable
 fun MainPreview() {
     SwipeScreen()
