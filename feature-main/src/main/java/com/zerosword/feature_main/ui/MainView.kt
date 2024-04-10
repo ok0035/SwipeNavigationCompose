@@ -1,9 +1,8 @@
 package com.zerosword.feature_main.ui
 
-import android.app.Activity
-import android.os.Build
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.InfiniteTransition
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -33,17 +32,11 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.PagerDefaults
-import androidx.compose.foundation.pager.PagerScope
-import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -59,35 +52,25 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
-import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
 import com.zerosword.feature_main.ui.shape.BottomArcShape
 import com.zerosword.feature_main.viewmodel.MainViewModel
 import com.zerosword.resources.R
-import com.zerosword.resources.ui.theme.DarkColorScheme
-import com.zerosword.resources.ui.theme.LightColorScheme
-import com.zerosword.resources.ui.theme.Typography
 import com.zerosword.resources.ui.theme.body14
 import com.zerosword.resources.ui.theme.gradientTextColor
 import com.zerosword.resources.ui.theme.title14
 import com.zerosword.resources.ui.theme.title24
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
 @Composable
@@ -98,7 +81,7 @@ fun MainView(
 ) {
     val viewModel: MainViewModel = hiltViewModel()
 
-    SwipeScreen()
+    MainSpot()
 //    CurvedBottomBox()
 
 }
@@ -106,7 +89,7 @@ fun MainView(
 @OptIn(ExperimentalGlideComposeApi::class, ExperimentalFoundationApi::class)
 @Preview(showBackground = true)
 @Composable
-fun SwipeScreen() {
+fun MainSpot() {
 
     ConstraintLayout {
 
@@ -117,6 +100,8 @@ fun SwipeScreen() {
         val height = context.resources.configuration.screenHeightDp.dp
 
         val offsetX by remember { mutableStateOf(Animatable(width.value)) }
+        var dragStartX  by remember { mutableFloatStateOf(0f) }
+        var dragEndX by remember { mutableFloatStateOf(0f) }
         var isDragEnded by remember { mutableStateOf(false) }
 
         val spotInfoTextBox = createRef()
@@ -129,18 +114,19 @@ fun SwipeScreen() {
 
             LaunchedEffect(key1 = isDragEnded) {
                 val currentOffset = offsetX.value
-                val progress = currentOffset / maxWidth.value
                 val min = 0f
                 val max = maxWidth.value
+                val totalDuration = 1000
                 val duration =
-                    (((currentOffset / maxWidth.value) * 1000).coerceIn(0f, 3000f)).toInt()
-                println("current offset -> $progress")
+                    (((currentOffset / maxWidth.value) * totalDuration).coerceIn(0f, totalDuration.toFloat())).toInt()
 
-                if (progress < 0.5f)
+//                val distance = abs(dragEndX) - dragStartX
+                if (dragEndX < 0)
                     offsetX.animateTo(
                         targetValue = min,
                         animationSpec = tween(
-                            durationMillis = duration
+                            durationMillis = duration,
+                            easing = FastOutLinearInEasing
                         )
                     ) {
                         isDragEnded = false
@@ -149,12 +135,14 @@ fun SwipeScreen() {
                     offsetX.animateTo(
                         targetValue = max,
                         animationSpec = tween(
-                            durationMillis = duration
+                            durationMillis = totalDuration - duration,
+                            easing = FastOutLinearInEasing
                         )
                     ) {
                         isDragEnded = false
                     }
                 }
+
             }
 
             Box(
@@ -163,16 +151,19 @@ fun SwipeScreen() {
                     .background(Color.White)
                     .pointerInput(Unit) {
                         detectHorizontalDragGestures(
+                            onDragStart = { offset ->
+                                dragStartX = offset.x
+                                dragEndX = 0f
+                            },
 
                             onDragEnd = {
                                 isDragEnded = true
-
                             },
                             onDragCancel = {
                                 isDragEnded = true
-
                             },
                             onHorizontalDrag = { change, dragAmount ->
+                                dragEndX += dragAmount
                                 scope.launch {
                                     val newOffset = (offsetX.value + (dragAmount / 1.5f)).coerceIn(
                                         0f,
@@ -180,7 +171,6 @@ fun SwipeScreen() {
                                     )
                                     offsetX.snapTo(newOffset)
                                     change.consume()
-                                    println("offset -> ${offsetX.value}")
                                 }
                             }
                         )
@@ -195,44 +185,31 @@ fun SwipeScreen() {
                 val circle2Width = width * 2.17f
                 val circle2Height = width * 2.26f
 
-                val infiniteTransition = rememberInfiniteTransition(label = "")
-
-                val rotation = infiniteTransition.animateFloat(
-                    initialValue = 0f,
-                    targetValue = 360f,
-                    animationSpec = infiniteRepeatable(
-                        // tween을 사용하여 애니메이션 지속 시간과 속도 곡선을 정의합니다.
-                        animation = tween(durationMillis = 20000, easing = androidx.compose.animation.core.LinearEasing),
-                        // RepeatMode.Restart를 사용하여 애니메이션이 끝날 때마다 처음부터 다시 시작합니다.
-                        repeatMode = RepeatMode.Restart
-                    ), label = ""
-                )
-
-
                 DrawCircle(modifier = Modifier
                     .wrapContentSize()
                     .graphicsLayer {
                         translationX = circle2Width.value / 2f - circle2Width.value / 1.8f
                         translationY = (height.value * 0.7f) - circle2Height.value * 1.45f
-                        rotationZ = rotation.value
                     }
                     .background(Color.Transparent),
                     widthRate = 2.17f,
                     heightRate = 2.26f,
-                    color = Color(0xFFDBE9FF)
+                    color = Color(0xFFDBE9FF),
+                    alpha = (offsetX.value / width.value).coerceIn(0f, 1f)
                 )
 
-                DrawCircle(Modifier
-                    .wrapContentSize()
-                    .graphicsLayer {
-                        translationX = -circle1Width.value / 1.3f
-                        translationY = height.value * 0.7f - circle1Height.value * 1.35f
-                        rotationZ = rotation.value
-                    }
-                    .background(Color.Transparent),
+                DrawCircle(
+                    modifier = Modifier
+                        .wrapContentSize()
+                        .graphicsLayer {
+                            translationX = -circle1Width.value / 1.3f
+                            translationY = height.value * 0.7f - circle1Height.value * 1.35f
+                        }
+                        .background(Color.Transparent),
                     2.1f,
                     2.24f,
-                    color = Color(0xFFE4F7FF)
+                    color = Color(0xFFE4F7FF),
+                    alpha = (offsetX.value / width.value).coerceIn(0f, 1f)
                 )
 
                 Box(
@@ -280,10 +257,7 @@ fun SwipeScreen() {
                         }
                     )
                 }
-
-
             }
-
         }
 
         Box(
@@ -347,16 +321,43 @@ fun MainClippingCircle(modifier: Modifier, scale: Float) {
 }
 
 @Composable
-fun DrawCircle(modifier: Modifier = Modifier, widthRate: Float, heightRate: Float, color: Color, alpha: Float = 1f) {
+fun DrawCircle(
+    modifier: Modifier = Modifier,
+    widthRate: Float,
+    heightRate: Float,
+    color: Color,
+    alpha: Float = 1f
+) {
+
+    // 무한 회전 애니메이션을 위한 Transition
+    val infiniteTransition = rememberInfiniteTransition(label = "")
+    val angle = infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 20000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ), label = ""
+    )
+
     Box(
         contentAlignment = Alignment.Center,
-        modifier = modifier
+        modifier = Modifier.fillMaxSize()
     ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
+
+        Canvas(modifier = modifier
+            .graphicsLayer {
+                rotationZ = angle.value
+                translationX = -(size.width * (1f - alpha)) * 0.6f
+                translationY = -(size.width * (1f - alpha)) * 0.6f
+            }
+            .fillMaxSize()) {
+
             // 타원의 실제 크기를 계산합니다.
             val ovalWidth = size.width * widthRate
             val ovalHeight = size.width * heightRate
             // 타원을 Canvas의 중심에 위치시키기 위한 topLeft 계산
+            println("offset2 -> ${(size.width - size.width * alpha)} $alpha")
             val topLeftX = (size.width - ovalWidth) / 2f
             val topLeftY = (size.height - ovalHeight) / 2f
 
@@ -416,7 +417,7 @@ fun MainSpotTextBox(
 fun MainPreview() {
     val context = LocalContext.current
     val configuration = context.resources.configuration
-    val width =  configuration.screenWidthDp
+    val width = configuration.screenWidthDp
     val height = configuration.screenHeightDp
 
 //     BoxWithCircle(width = width.dp * 2.21f,  height = height.dp * 2.24f)
