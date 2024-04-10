@@ -100,6 +100,7 @@ fun MainSpot() {
         val height = context.resources.configuration.screenHeightDp.dp
 
         val offsetX by remember { mutableStateOf(Animatable(width.value)) }
+        val imageAlphaOffset by remember { mutableStateOf(Animatable(width.value)) }
         var dragStartX  by remember { mutableFloatStateOf(0f) }
         var dragEndX by remember { mutableFloatStateOf(0f) }
         var isDragEnded by remember { mutableStateOf(false) }
@@ -121,7 +122,7 @@ fun MainSpot() {
                     (((currentOffset / maxWidth.value) * totalDuration).coerceIn(0f, totalDuration.toFloat())).toInt()
 
 //                val distance = abs(dragEndX) - dragStartX
-                if (dragEndX < 0)
+                if (dragEndX < 0) {
                     offsetX.animateTo(
                         targetValue = min,
                         animationSpec = tween(
@@ -131,6 +132,15 @@ fun MainSpot() {
                     ) {
                         isDragEnded = false
                     }
+
+                    imageAlphaOffset.animateTo(
+                        targetValue = min,
+                        animationSpec = tween(
+                            durationMillis = (duration / 1.5f).toInt(),
+                            easing = FastOutLinearInEasing
+                        )
+                    )
+                }
                 else {
                     offsetX.animateTo(
                         targetValue = max,
@@ -141,6 +151,14 @@ fun MainSpot() {
                     ) {
                         isDragEnded = false
                     }
+
+                    imageAlphaOffset.animateTo(
+                        targetValue = max,
+                        animationSpec = tween(
+                            durationMillis = ((totalDuration / 1.5f) - duration / 1.5f).toInt(),
+                            easing = FastOutLinearInEasing
+                        )
+                    )
                 }
 
             }
@@ -169,7 +187,13 @@ fun MainSpot() {
                                         0f,
                                         maxWidth.value
                                     )
+
+                                    val newAlphaOffset = (imageAlphaOffset.value + dragAmount).coerceIn(
+                                        0f,
+                                        maxWidth.value
+                                    )
                                     offsetX.snapTo(newOffset)
+                                    imageAlphaOffset.snapTo(newAlphaOffset)
                                     change.consume()
                                 }
                             }
@@ -218,7 +242,7 @@ fun MainSpot() {
                         .fillMaxHeight(0.7f)// 여기서는 Box의 크기를 지정해줍니다.
                         .clip(BottomArcShape(1f - offsetX.value / width.value))
                         .background(
-                            color = Color.White,
+                            color = Color.Transparent,
                             shape = BottomArcShape(1f - offsetX.value / width.value)
                         )
                 ) {
@@ -226,7 +250,8 @@ fun MainSpot() {
                     HorizontalPager(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .wrapContentHeight(),
+                            .wrapContentHeight()
+                            .alpha((offsetX.value / width.value).coerceIn(0f, 1f)),
                         state = rememberPagerState { 3 },
                         pageSpacing = 0.dp,
                         userScrollEnabled = true,
@@ -243,7 +268,8 @@ fun MainSpot() {
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .fillMaxHeight()
-                                    .background(Color.White),
+                                    .background(Color.Transparent)
+                                    .alpha((offsetX.value / width.value).coerceIn(0f, 1f)),
                                 model = when (it) {
                                     0 -> R.drawable.test_image
                                     1 -> R.drawable.test_image2
@@ -348,8 +374,8 @@ fun DrawCircle(
         Canvas(modifier = modifier
             .graphicsLayer {
                 rotationZ = angle.value
-                translationX = -(size.width * (1f - alpha)) * 0.6f
-                translationY = -(size.width * (1f - alpha)) * 0.6f
+                translationX = -(size.width * (1f - alpha)) * 0.8f
+                translationY = -(size.width * (1f - alpha)) * 0.8f
             }
             .fillMaxSize()) {
 
@@ -357,7 +383,6 @@ fun DrawCircle(
             val ovalWidth = size.width * widthRate
             val ovalHeight = size.width * heightRate
             // 타원을 Canvas의 중심에 위치시키기 위한 topLeft 계산
-            println("offset2 -> ${(size.width - size.width * alpha)} $alpha")
             val topLeftX = (size.width - ovalWidth) / 2f
             val topLeftY = (size.height - ovalHeight) / 2f
 
