@@ -74,16 +74,9 @@ import com.zerosword.resources.ui.theme.title24
 import kotlinx.coroutines.launch
 
 @Composable
-fun MainView(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
-) {
+fun MainView() {
     val viewModel: MainViewModel = hiltViewModel()
-
     MainSpot()
-//    CurvedBottomBox()
-
 }
 
 @OptIn(ExperimentalGlideComposeApi::class, ExperimentalFoundationApi::class)
@@ -101,7 +94,7 @@ fun MainSpot() {
 
         val offsetX by remember { mutableStateOf(Animatable(width.value)) }
         val imageAlphaOffset by remember { mutableStateOf(Animatable(width.value)) }
-        var dragStartX  by remember { mutableFloatStateOf(0f) }
+        var dragStartX by remember { mutableFloatStateOf(0f) }
         var dragEndX by remember { mutableFloatStateOf(0f) }
         var isDragEnded by remember { mutableStateOf(false) }
 
@@ -119,7 +112,10 @@ fun MainSpot() {
                 val max = maxWidth.value
                 val totalDuration = 1000
                 val duration =
-                    (((currentOffset / maxWidth.value) * totalDuration).coerceIn(0f, totalDuration.toFloat())).toInt()
+                    (((currentOffset / maxWidth.value) * totalDuration).coerceIn(
+                        0f,
+                        totalDuration.toFloat()
+                    )).toInt()
 
 //                val distance = abs(dragEndX) - dragStartX
                 if (dragEndX < 0) {
@@ -140,8 +136,7 @@ fun MainSpot() {
                             easing = FastOutLinearInEasing
                         )
                     )
-                }
-                else {
+                } else {
                     offsetX.animateTo(
                         targetValue = max,
                         animationSpec = tween(
@@ -188,10 +183,11 @@ fun MainSpot() {
                                         maxWidth.value
                                     )
 
-                                    val newAlphaOffset = (imageAlphaOffset.value + dragAmount).coerceIn(
-                                        0f,
-                                        maxWidth.value
-                                    )
+                                    val newAlphaOffset =
+                                        (imageAlphaOffset.value + dragAmount).coerceIn(
+                                            0f,
+                                            maxWidth.value
+                                        )
                                     offsetX.snapTo(newOffset)
                                     imageAlphaOffset.snapTo(newAlphaOffset)
                                     change.consume()
@@ -305,43 +301,34 @@ fun MainSpot() {
         ) {
             MainSpotTextBox()
         }
-    }
-}
 
-@Composable
-fun MainClippingCircle(modifier: Modifier, scale: Float) {
-    Canvas(
-        modifier = modifier
-            .background(Color.Transparent)
-    ) {
-        // 화면의 중앙에 원을 그립니다.
-        val newDrawingSize = Size(size.width * 10, size.height * 10)
-        val circleDiameter = size.width * 6.38f
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Transparent)
+                .alpha(1f - offsetX.value / width.value)
+        ) {
 
-        val radius = circleDiameter / 2f * scale
-
-        val centerOffset = Offset(
-            0f,
-            -(circleDiameter / 2f) + size.height / 1.6f
-        )
-        // 원형 클리핑 경로 생성
-        val clipPath = Path().apply {
-            addOval(
-                Rect(
-                    centerOffset - Offset(radius, radius),
-                    centerOffset + Offset(radius, radius)
+            Column(modifier = Modifier.fillMaxSize()) {
+                ListTitle(title = "맛집", height = height.value * 0.08f)
+                HorizontalListView(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(height * 0.202f)
                 )
-            )
-        }
-        drawRect(
-            color = Color.White,
-            size = newDrawingSize
-        )
-        clipPath(clipPath, clipOp = ClipOp.Difference) {
-            drawRect(
-                color = Color.White,
-                size = newDrawingSize
-            )
+                ListTitle(title = "카페", height = height.value * 0.08f)
+                HorizontalListView(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(height * 0.202f)
+                )
+                ListTitle(title = "놀거리", height = height.value * 0.08f)
+                HorizontalListView(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(height * 0.202f)
+                )
+            }
         }
     }
 }
@@ -398,6 +385,7 @@ fun DrawCircle(
             )
         }
     }
+
 }
 
 
@@ -447,22 +435,4 @@ fun MainPreview() {
 
 //     BoxWithCircle(width = width.dp * 2.21f,  height = height.dp * 2.24f)
 //    EllipseWithDrawArc(width.dp * 2.21f, width.dp * 2.24f)
-}
-
-@Composable
-fun LargeCircleCentered() {
-    // Box를 사용하여 전체 화면을 채우고, 배경색을 설정합니다.
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.LightGray),
-        contentAlignment = Alignment.Center // Box 내용을 중앙에 위치시킵니다.
-    ) {
-        // 화면보다 큰 원을 생성합니다.
-        Box(
-            modifier = Modifier
-                .size(600.dp) // 원하는 크기로 설정합니다. 예: 화면보다 큰 600.dp
-                .background(Color.Blue, CircleShape) // 원 모양의 배경을 파란색으로 설정합니다.
-        )
-    }
 }
