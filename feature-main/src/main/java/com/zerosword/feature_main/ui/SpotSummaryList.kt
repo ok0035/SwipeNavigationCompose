@@ -1,8 +1,19 @@
 package com.zerosword.feature_main.ui
 
+import android.graphics.Matrix
 import android.graphics.Path
+import android.graphics.PathMeasure
 import android.graphics.RectF
 import android.graphics.Typeface
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -23,6 +34,10 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,11 +59,14 @@ import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
 import com.zerosword.domain.model.BubbleModel
 import com.zerosword.resources.ui.theme.title16
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 
 
 @Composable
 fun HorizontalListView(
     modifier: Modifier,
+    offset: Float = 0f,
     items: List<BubbleModel> = listOf(
         BubbleModel(id = com.zerosword.resources.R.drawable.test_image, description = "하이하이"),
         BubbleModel(id = com.zerosword.resources.R.drawable.test_image2, description = "하이하이"),
@@ -57,7 +75,8 @@ fun HorizontalListView(
         BubbleModel(id = com.zerosword.resources.R.drawable.test_image2, description = "하이하이")
     )
 ) {
-    Box(modifier =  modifier) {
+
+    Box(modifier = modifier) {
         // LazyRow를 사용하여 수평 스크롤 리스트 생성
         LazyRow(
             modifier = Modifier
@@ -83,12 +102,39 @@ fun HorizontalListView(
                                     itemWidth.toPx() / 4.4f
                                 )
                             } else if (!isFirst) itemWidth.toPx() / 10f else 0f
+
+                            if (index < 5) {
+                                translationX =
+                                    itemWidth.toPx() * offset * (index + 1) * 1.7f - itemWidth.toPx() * offset * 1.5f
+                            }
+
                         },
                     contentAlignment = Alignment.Center
                 ) {
+
+                    val totalDuration = 4000
+                    val infiniteTransition = rememberInfiniteTransition(label = "")
+                    val bubbleMotion = infiniteTransition.animateFloat(
+                        initialValue = 0f,
+                        targetValue = 20.dp.value,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(
+                                durationMillis = totalDuration,
+                                easing = LinearEasing
+                            ),
+                            repeatMode = RepeatMode.Reverse
+                        ), label = ""
+                    )
+
                     BubbleItem(
                         modifier = Modifier
-                            .fillMaxSize(),
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                if (index % 2 == 1)
+                                    translationX = bubbleMotion.value
+                                else
+                                    translationY = bubbleMotion.value
+                            },
                         title = item.title, res = item.id,
                         diameter = itemWidth
                     )
@@ -150,10 +196,8 @@ fun BubbleItem(modifier: Modifier = Modifier, title: String, res: Int, diameter:
 
 @Composable
 fun CurvedTextExample(
-    text: String = "통의동 보안여관",
-    textSize: TextUnit = 16.sp,
-    width: Dp = 104.dp,
-    height: Dp = 54.dp
+    text: String = "그라운드시소 서촌",
+    textSize: TextUnit = 14.sp,
 ) {
     val paint = Paint().asFrameworkPaint().apply {
         isAntiAlias = true
@@ -163,12 +207,12 @@ fun CurvedTextExample(
 
     Canvas(
         modifier = Modifier
-            .width(width)
-            .height(height)
+            .width(textSize.value.dp * (text.length))
+            .height(textSize.value.dp * 2)
             .background(Color.Transparent)
     ) {
         val path = Path().apply {
-            moveTo(0f, size.height / 2) // 시작점
+            moveTo(textSize.value, size.height / 2) // 시작점
             quadTo(
                 size.width / 2, // 제어점 X
                 size.height,     // 제어점 Y (이 값을 변경하여 곡선의 높이 조절)
@@ -195,18 +239,23 @@ fun CommonPreview() {
         val height = LocalContext.current.resources.configuration.screenHeightDp
         Column(modifier = Modifier.fillMaxSize()) {
             ListTitle(title = "맛집", height = height * 0.08f)
-            HorizontalListView(modifier = Modifier
-                .fillMaxWidth()
-                .height(height.dp * 0.202f)
+            HorizontalListView(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(height.dp * 0.202f)
             )
             ListTitle(title = "카페", height = height * 0.08f)
-            HorizontalListView(modifier = Modifier
-                .fillMaxWidth()
-                .height(height.dp * 0.202f))
+            HorizontalListView(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(height.dp * 0.202f)
+            )
             ListTitle(title = "놀거리", height = height * 0.08f)
-            HorizontalListView(modifier = Modifier
-                .fillMaxWidth()
-                .height(height.dp * 0.202f))
+            HorizontalListView(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(height.dp * 0.202f)
+            )
         }
 
     }
@@ -214,9 +263,9 @@ fun CommonPreview() {
 }
 
 @Composable
-fun ListTitle(title: String, height: Float) {
+fun ListTitle(modifier: Modifier = Modifier, title: String, height: Float) {
     Box(
-        Modifier
+        modifier
             .fillMaxWidth()
             .height(height.dp)
             .padding(start = 18.dp, bottom = 16.dp),

@@ -1,8 +1,11 @@
 package com.zerosword.feature_main.ui
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -59,6 +62,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -71,7 +75,9 @@ import com.zerosword.resources.ui.theme.body14
 import com.zerosword.resources.ui.theme.gradientTextColor
 import com.zerosword.resources.ui.theme.title14
 import com.zerosword.resources.ui.theme.title24
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun MainView() {
@@ -80,7 +86,7 @@ fun MainView() {
 }
 
 @OptIn(ExperimentalGlideComposeApi::class, ExperimentalFoundationApi::class)
-@Preview(showBackground = true)
+//@Preview(showBackground = true)
 @Composable
 fun MainSpot() {
 
@@ -94,6 +100,8 @@ fun MainSpot() {
 
         val offsetX by remember { mutableStateOf(Animatable(width.value)) }
         val imageAlphaOffset by remember { mutableStateOf(Animatable(width.value)) }
+        val horizontalListOffset by remember { mutableStateOf(Animatable(0f)) }
+
         var dragStartX by remember { mutableFloatStateOf(0f) }
         var dragEndX by remember { mutableFloatStateOf(0f) }
         var isDragEnded by remember { mutableStateOf(false) }
@@ -106,7 +114,31 @@ fun MainSpot() {
                 .height(height * 10)
         ) {
 
-            LaunchedEffect(key1 = isDragEnded) {
+            val totalDuration = 2000
+            LaunchedEffect(key1 = isDragEnded, Dispatchers.IO) {
+                if (dragEndX < 0) {
+
+                    horizontalListOffset.animateTo(
+                        targetValue = 0f,
+                        animationSpec = tween(
+                            durationMillis = (totalDuration * offsetX.value / width.value).toInt()
+                                .coerceIn(totalDuration / 3, totalDuration.coerceIn(totalDuration/3, totalDuration)),
+                            easing = CubicBezierEasing(0.21f, 0.0f, 0.35f, 1.0f)
+                        )
+                    )
+
+                } else {
+                    horizontalListOffset.animateTo(
+                        targetValue = 1f,
+                        animationSpec = tween(
+                            durationMillis = ((totalDuration - (totalDuration * offsetX.value / width.value).toInt()) / 2).coerceIn(0, totalDuration),
+                            easing = CubicBezierEasing(0.21f, 0.0f, 0.35f, 1.0f)
+                        )
+                    )
+                }
+            }
+
+            LaunchedEffect(key1 = isDragEnded, Dispatchers.IO) {
                 val currentOffset = offsetX.value
                 val min = 0f
                 val max = maxWidth.value
@@ -119,29 +151,32 @@ fun MainSpot() {
 
 //                val distance = abs(dragEndX) - dragStartX
                 if (dragEndX < 0) {
+
                     offsetX.animateTo(
                         targetValue = min,
                         animationSpec = tween(
                             durationMillis = duration,
-                            easing = FastOutLinearInEasing
+                            easing = LinearEasing
                         )
                     ) {
                         isDragEnded = false
                     }
 
+
                     imageAlphaOffset.animateTo(
                         targetValue = min,
                         animationSpec = tween(
                             durationMillis = (duration / 1.5f).toInt(),
-                            easing = FastOutLinearInEasing
+                            easing = LinearEasing
                         )
                     )
                 } else {
+
                     offsetX.animateTo(
                         targetValue = max,
                         animationSpec = tween(
-                            durationMillis = totalDuration - duration,
-                            easing = FastOutLinearInEasing
+                            durationMillis = (totalDuration - duration) / 2,
+                            easing = LinearEasing
                         )
                     ) {
                         isDragEnded = false
@@ -151,9 +186,10 @@ fun MainSpot() {
                         targetValue = max,
                         animationSpec = tween(
                             durationMillis = ((totalDuration / 1.5f) - duration / 1.5f).toInt(),
-                            easing = FastOutLinearInEasing
+                            easing = LinearEasing
                         )
                     )
+
                 }
 
             }
@@ -188,6 +224,7 @@ fun MainSpot() {
                                             0f,
                                             maxWidth.value
                                         )
+                                    println("offset -> ${newOffset.dp.toPx()}")
                                     offsetX.snapTo(newOffset)
                                     imageAlphaOffset.snapTo(newAlphaOffset)
                                     change.consume()
@@ -302,33 +339,79 @@ fun MainSpot() {
             MainSpotTextBox()
         }
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Transparent)
-                .alpha(1f - offsetX.value / width.value)
-        ) {
+        SummaryView(width, height, offsetX.value, elementOffset = horizontalListOffset.value)
+    }
+}
 
-            Column(modifier = Modifier.fillMaxSize()) {
-                ListTitle(title = "맛집", height = height.value * 0.08f)
-                HorizontalListView(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(height * 0.202f)
-                )
-                ListTitle(title = "카페", height = height.value * 0.08f)
-                HorizontalListView(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(height * 0.202f)
-                )
-                ListTitle(title = "놀거리", height = height.value * 0.08f)
-                HorizontalListView(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(height * 0.202f)
-                )
-            }
+@Composable
+fun SummaryView(width: Dp, height: Dp, offset: Float, elementOffset: Float = 0f) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Transparent)
+    ) {
+
+        Column(modifier = Modifier.fillMaxSize()) {
+            ListTitle(
+                modifier = Modifier
+                    .graphicsLayer {
+                        translationX =
+                            (width.toPx() - (width.toPx() - offset.dp.toPx())) / 4f
+                    }
+                    .alpha(1f - offset / width.value),
+                title = "맛집",
+                height = height.value * 0.08f
+            )
+            HorizontalListView(
+                modifier = Modifier
+                    .graphicsLayer {
+                        translationX =
+                            (width.toPx() - (width.toPx() - offset.dp.toPx())) * 1.2f
+                    }
+                    .fillMaxWidth()
+                    .height(height * 0.202f),
+                offset = elementOffset
+            )
+            ListTitle(
+                modifier = Modifier
+                    .graphicsLayer {
+                        translationX =
+                            (width.toPx() - (width.toPx() - offset.dp.toPx())) / 4f
+                    }
+                    .alpha(1f - offset / width.value),
+                title = "카페",
+                height = height.value * 0.08f
+            )
+            HorizontalListView(
+                modifier = Modifier
+                    .graphicsLayer {
+                        translationX =
+                            (width.toPx() - (width.toPx() - offset.dp.toPx())) * 1.2f
+                    }
+                    .fillMaxWidth()
+                    .height(height * 0.202f),
+                offset = elementOffset
+            )
+            ListTitle(
+                modifier = Modifier
+                    .graphicsLayer {
+                        translationX =
+                            (width.toPx() - (width.toPx() - offset.dp.toPx())) / 4f
+                    }
+                    .alpha(1f - offset / width.value),
+                title = "놀거리",
+                height = height.value * 0.08f
+            )
+            HorizontalListView(
+                modifier = Modifier
+                    .graphicsLayer {
+                        translationX =
+                            (width.toPx() - (width.toPx() - offset.dp.toPx())) * 0.82f
+                    }
+                    .fillMaxWidth()
+                    .height(height * 0.202f),
+                offset = elementOffset
+            )
         }
     }
 }
