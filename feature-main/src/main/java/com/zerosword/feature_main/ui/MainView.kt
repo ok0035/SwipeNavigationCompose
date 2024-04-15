@@ -40,8 +40,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -80,17 +82,31 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
+@Preview(showBackground = true)
 fun MainView() {
-    val viewModel: MainViewModel = hiltViewModel()
-    MainSpot()
+//    val viewModel: MainViewModel = hiltViewModel()
+    val tabIndex = remember {
+        mutableIntStateOf(0)
+    }
+    val tabBarHeight = 40.dp
+    Box(modifier = Modifier.fillMaxSize()) {
+        MainSpot(
+            Modifier
+                .fillMaxSize()
+                .padding(top = tabBarHeight),
+            tabIndex
+        )
+        ScrollableCustomTabBarExample(Modifier.height(tabBarHeight), tabIndex)
+    }
+
 }
 
 @OptIn(ExperimentalGlideComposeApi::class, ExperimentalFoundationApi::class)
 //@Preview(showBackground = true)
 @Composable
-fun MainSpot() {
+fun MainSpot(modifier: Modifier, tabIndexState: MutableIntState) {
 
-    ConstraintLayout {
+    ConstraintLayout(modifier) {
 
         val context = LocalContext.current
         val scope = rememberCoroutineScope()
@@ -114,27 +130,37 @@ fun MainSpot() {
                 .height(height * 10)
         ) {
 
-            val totalDuration = 2000
             LaunchedEffect(key1 = isDragEnded, Dispatchers.IO) {
+                val totalDuration = 2000
                 if (dragEndX < 0) {
 
                     horizontalListOffset.animateTo(
                         targetValue = 0f,
                         animationSpec = tween(
                             durationMillis = (totalDuration * offsetX.value / width.value).toInt()
-                                .coerceIn(totalDuration / 3, totalDuration.coerceIn(totalDuration/3, totalDuration)),
+                                .coerceIn(
+                                    totalDuration / 3,
+                                    totalDuration.coerceIn(totalDuration / 3, totalDuration)
+                                ),
                             easing = CubicBezierEasing(0.21f, 0.0f, 0.35f, 1.0f)
                         )
-                    )
+                    ) {
+                        tabIndexState.intValue  = 1
+                    }
 
                 } else {
                     horizontalListOffset.animateTo(
                         targetValue = 1f,
                         animationSpec = tween(
-                            durationMillis = ((totalDuration - (totalDuration * offsetX.value / width.value).toInt()) / 2).coerceIn(0, totalDuration),
+                            durationMillis = ((totalDuration - (totalDuration * offsetX.value / width.value).toInt()) / 2).coerceIn(
+                                0,
+                                totalDuration
+                            ),
                             easing = CubicBezierEasing(0.21f, 0.0f, 0.35f, 1.0f)
                         )
-                    )
+                    ) {
+                        tabIndexState.intValue = 0
+                    }
                 }
             }
 
