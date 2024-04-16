@@ -15,6 +15,10 @@ val Purple40 = Color(0xFF6650a4)
 val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)
 
+val unselectedTextColor = Color(0xFFCDCDCD)
+val gradientStartColor = Color(0xFF9FE2FF)
+val gradientEndColor = Color(0xFFC0CEFF)
+
 fun Modifier.gradientTextColor(startColor: Color, endColor: Color) = this
     .graphicsLayer(alpha = 0.99f)
     .drawWithCache {
@@ -24,3 +28,5 @@ fun Modifier.gradientTextColor(startColor: Color, endColor: Color) = this
             drawRect(brush, blendMode = BlendMode.SrcAtop)
         }
     }
+
+fun gradientBrush(startColor: Color, endColor: Color) = Brush.horizontalGradient(listOf(startColor, endColor))

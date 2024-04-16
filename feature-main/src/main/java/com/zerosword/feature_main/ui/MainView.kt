@@ -1,6 +1,7 @@
 package com.zerosword.feature_main.ui
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.FastOutLinearInEasing
@@ -85,18 +86,36 @@ import kotlinx.coroutines.withContext
 @Preview(showBackground = true)
 fun MainView() {
 //    val viewModel: MainViewModel = hiltViewModel()
+
+
     val tabIndex = remember {
         mutableIntStateOf(0)
     }
+
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    val width = context.resources.configuration.screenWidthDp.dp
+    val height = context.resources.configuration.screenHeightDp.dp
     val tabBarHeight = 40.dp
+    val offsetX by remember { mutableStateOf(Animatable(width.value)) }
+
     Box(modifier = Modifier.fillMaxSize()) {
         MainSpot(
             Modifier
-                .fillMaxSize()
-                .padding(top = tabBarHeight),
-            tabIndex
+                .fillMaxSize(),
+            tabIndex,
+            offsetX
         )
-        ScrollableCustomTabBarExample(Modifier.height(tabBarHeight), tabIndex)
+
+        val tabBarAlpha = 1f - offsetX.value / width.value
+        ScrollableCustomTabBarExample(
+            modifier = Modifier
+                .height(tabBarHeight)
+                .alpha(tabBarAlpha),
+            tabBarHeight = tabBarHeight,
+            selectedTabIndexState = tabIndex
+        )
     }
 
 }
@@ -104,7 +123,12 @@ fun MainView() {
 @OptIn(ExperimentalGlideComposeApi::class, ExperimentalFoundationApi::class)
 //@Preview(showBackground = true)
 @Composable
-fun MainSpot(modifier: Modifier, tabIndexState: MutableIntState) {
+fun MainSpot(
+    modifier: Modifier,
+    tabIndexState: MutableIntState,
+    offsetX: Animatable<Float, AnimationVector1D>,
+    tabBarHeight: Dp = 40.dp
+) {
 
     ConstraintLayout(modifier) {
 
@@ -114,7 +138,7 @@ fun MainSpot(modifier: Modifier, tabIndexState: MutableIntState) {
         val width = context.resources.configuration.screenWidthDp.dp
         val height = context.resources.configuration.screenHeightDp.dp
 
-        val offsetX by remember { mutableStateOf(Animatable(width.value)) }
+
         val imageAlphaOffset by remember { mutableStateOf(Animatable(width.value)) }
         val horizontalListOffset by remember { mutableStateOf(Animatable(0f)) }
 
@@ -145,7 +169,7 @@ fun MainSpot(modifier: Modifier, tabIndexState: MutableIntState) {
                             easing = CubicBezierEasing(0.21f, 0.0f, 0.35f, 1.0f)
                         )
                     ) {
-                        tabIndexState.intValue  = 1
+                        tabIndexState.intValue = 1
                     }
 
                 } else {
@@ -320,7 +344,7 @@ fun MainSpot(modifier: Modifier, tabIndexState: MutableIntState) {
                         pageSize = PageSize.Fill,
                         key = null,
                         pageNestedScrollConnection = PagerDefaults.pageNestedScrollConnection(
-                            Orientation.Horizontal
+                            orientation = Orientation.Horizontal
                         ),
                         pageContent = {
                             GlideImage(
@@ -365,15 +389,22 @@ fun MainSpot(modifier: Modifier, tabIndexState: MutableIntState) {
             MainSpotTextBox()
         }
 
-        SummaryView(width, height, offsetX.value, elementOffset = horizontalListOffset.value)
+        SummaryView(
+            width = width,
+            height = height,
+            tabBarHeight = tabBarHeight,
+            offset = offsetX.value,
+            elementOffset = horizontalListOffset.value
+        )
     }
 }
 
 @Composable
-fun SummaryView(width: Dp, height: Dp, offset: Float, elementOffset: Float = 0f) {
+fun SummaryView(width: Dp, height: Dp, tabBarHeight: Dp = 40.dp, offset: Float, elementOffset: Float = 0f) {
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .padding(top = tabBarHeight)
             .background(Color.Transparent)
     ) {
 
