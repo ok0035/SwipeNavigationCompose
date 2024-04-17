@@ -2,22 +2,12 @@ package com.zerosword.feature_main.ui
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
-import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.Easing
-import androidx.compose.animation.core.FastOutLinearInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -29,7 +19,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
@@ -37,7 +26,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -54,12 +42,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -68,11 +52,23 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
+import com.zerosword.feature_main.ui.animation.MainSpotCircleAnimation
+import com.zerosword.feature_main.ui.animation.MainSpotCircleAnimation.CIRCLE_DIAMETER_HEIGHT_RATE1
+import com.zerosword.feature_main.ui.animation.MainSpotCircleAnimation.CIRCLE_DIAMETER_HEIGHT_RATE2
+import com.zerosword.feature_main.ui.animation.MainSpotCircleAnimation.CIRCLE_DIAMETER_WIDTH_RATE1
+import com.zerosword.feature_main.ui.animation.MainSpotCircleAnimation.CIRCLE_DIAMETER_WIDTH_RATE2
+import com.zerosword.feature_main.ui.animation.MainSpotCircleAnimation.circleTranslationX1
+import com.zerosword.feature_main.ui.animation.MainSpotCircleAnimation.circleTranslationX2
+import com.zerosword.feature_main.ui.animation.MainSpotCircleAnimation.circleTranslationY1
+import com.zerosword.feature_main.ui.animation.MainSpotCircleAnimation.circleTranslationY2
+import com.zerosword.feature_main.ui.animation.MainSpotCircleAnimation.infiniteRotation
+import com.zerosword.feature_main.ui.animation.MainSpotDragAnimation.dragFromMainSpotToSpotSummary
+import com.zerosword.feature_main.ui.animation.MainSpotDragAnimation.dragFromSpotSummaryToMainSpot
+import com.zerosword.feature_main.ui.animation.SpotSummaryListAnimation.animateMainToSpotSummaryList
+import com.zerosword.feature_main.ui.animation.SpotSummaryListAnimation.animateSpotSummaryListToMain
 import com.zerosword.feature_main.ui.shape.BottomArcShape
-import com.zerosword.feature_main.viewmodel.MainViewModel
 import com.zerosword.resources.R
 import com.zerosword.resources.ui.theme.body14
 import com.zerosword.resources.ui.theme.gradientTextColor
@@ -80,13 +76,9 @@ import com.zerosword.resources.ui.theme.title14
 import com.zerosword.resources.ui.theme.title24
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @Composable
-@Preview(showBackground = true)
 fun MainView() {
-//    val viewModel: MainViewModel = hiltViewModel()
-
 
     val tabIndex = remember {
         mutableIntStateOf(0)
@@ -96,12 +88,12 @@ fun MainView() {
     val scope = rememberCoroutineScope()
 
     val width = context.resources.configuration.screenWidthDp.dp
-    val height = context.resources.configuration.screenHeightDp.dp
-    val tabBarHeight = 40.dp
+    val tabTopPadding = 12.dp
+    val tabBarHeight = 40.dp + tabTopPadding
     val offsetX by remember { mutableStateOf(Animatable(width.value)) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        MainSpot(
+        Main(
             Modifier
                 .fillMaxSize(),
             tabIndex,
@@ -113,9 +105,23 @@ fun MainView() {
             modifier = Modifier
                 .height(tabBarHeight)
                 .alpha(tabBarAlpha),
-            tabBarHeight = tabBarHeight,
-            selectedTabIndexState = tabIndex
-        )
+            padding = PaddingValues(top = tabTopPadding),
+            selectedTabIndexState = tabIndex,
+        ) {
+            when (it) {
+                0 -> {
+                    scope.launch {
+                        offsetX.snapTo(width.value)
+                    }
+                }
+
+                1 -> {
+                    scope.launch {
+                        offsetX.snapTo(0f)
+                    }
+                }
+            }
+        }
     }
 
 }
@@ -123,9 +129,9 @@ fun MainView() {
 @OptIn(ExperimentalGlideComposeApi::class, ExperimentalFoundationApi::class)
 //@Preview(showBackground = true)
 @Composable
-fun MainSpot(
-    modifier: Modifier,
-    tabIndexState: MutableIntState,
+fun Main(
+    modifier: Modifier = Modifier,
+    tabIndexState: MutableIntState = mutableIntStateOf(0),
     offsetX: Animatable<Float, AnimationVector1D>,
     tabBarHeight: Dp = 40.dp
 ) {
@@ -138,15 +144,14 @@ fun MainSpot(
         val width = context.resources.configuration.screenWidthDp.dp
         val height = context.resources.configuration.screenHeightDp.dp
 
-
-        val imageAlphaOffset by remember { mutableStateOf(Animatable(width.value)) }
         val horizontalListOffset by remember { mutableStateOf(Animatable(0f)) }
 
         var dragStartX by remember { mutableFloatStateOf(0f) }
         var dragEndX by remember { mutableFloatStateOf(0f) }
         var isDragEnded by remember { mutableStateOf(false) }
-
         val spotInfoTextBox = createRef()
+
+        val progress = offsetX.value / width.value
 
         BoxWithConstraints(
             modifier = Modifier
@@ -155,90 +160,31 @@ fun MainSpot(
         ) {
 
             LaunchedEffect(key1 = isDragEnded, Dispatchers.IO) {
-                val totalDuration = 2000
                 if (dragEndX < 0) {
-
-                    horizontalListOffset.animateTo(
-                        targetValue = 0f,
-                        animationSpec = tween(
-                            durationMillis = (totalDuration * offsetX.value / width.value).toInt()
-                                .coerceIn(
-                                    totalDuration / 3,
-                                    totalDuration.coerceIn(totalDuration / 3, totalDuration)
-                                ),
-                            easing = CubicBezierEasing(0.21f, 0.0f, 0.35f, 1.0f)
-                        )
-                    ) {
+                    horizontalListOffset.animateMainToSpotSummaryList(progress) {
                         tabIndexState.intValue = 1
                     }
 
                 } else {
-                    horizontalListOffset.animateTo(
-                        targetValue = 1f,
-                        animationSpec = tween(
-                            durationMillis = ((totalDuration - (totalDuration * offsetX.value / width.value).toInt()) / 2).coerceIn(
-                                0,
-                                totalDuration
-                            ),
-                            easing = CubicBezierEasing(0.21f, 0.0f, 0.35f, 1.0f)
-                        )
-                    ) {
+                    horizontalListOffset.animateSpotSummaryListToMain(progress) {
                         tabIndexState.intValue = 0
                     }
                 }
             }
 
             LaunchedEffect(key1 = isDragEnded, Dispatchers.IO) {
-                val currentOffset = offsetX.value
-                val min = 0f
-                val max = maxWidth.value
-                val totalDuration = 1000
-                val duration =
-                    (((currentOffset / maxWidth.value) * totalDuration).coerceIn(
-                        0f,
-                        totalDuration.toFloat()
-                    )).toInt()
 
-//                val distance = abs(dragEndX) - dragStartX
                 if (dragEndX < 0) {
 
-                    offsetX.animateTo(
-                        targetValue = min,
-                        animationSpec = tween(
-                            durationMillis = duration,
-                            easing = LinearEasing
-                        )
-                    ) {
+                    offsetX.dragFromMainSpotToSpotSummary(progress) {
                         isDragEnded = false
                     }
 
-
-                    imageAlphaOffset.animateTo(
-                        targetValue = min,
-                        animationSpec = tween(
-                            durationMillis = (duration / 1.5f).toInt(),
-                            easing = LinearEasing
-                        )
-                    )
                 } else {
 
-                    offsetX.animateTo(
-                        targetValue = max,
-                        animationSpec = tween(
-                            durationMillis = (totalDuration - duration) / 2,
-                            easing = LinearEasing
-                        )
-                    ) {
+                    offsetX.dragFromSpotSummaryToMainSpot(maxWidth.value, progress) {
                         isDragEnded = false
                     }
-
-                    imageAlphaOffset.animateTo(
-                        targetValue = max,
-                        animationSpec = tween(
-                            durationMillis = ((totalDuration / 1.5f) - duration / 1.5f).toInt(),
-                            easing = LinearEasing
-                        )
-                    )
 
                 }
 
@@ -264,19 +210,12 @@ fun MainSpot(
                             onHorizontalDrag = { change, dragAmount ->
                                 dragEndX += dragAmount
                                 scope.launch {
-                                    val newOffset = (offsetX.value + (dragAmount / 1.5f)).coerceIn(
-                                        0f,
-                                        maxWidth.value
-                                    )
+                                    val newOffset =
+                                        (offsetX.value + (dragAmount / 1.5f))
+                                            .coerceIn(0f, maxWidth.value)
 
-                                    val newAlphaOffset =
-                                        (imageAlphaOffset.value + dragAmount).coerceIn(
-                                            0f,
-                                            maxWidth.value
-                                        )
                                     println("offset -> ${newOffset.dp.toPx()}")
                                     offsetX.snapTo(newOffset)
-                                    imageAlphaOffset.snapTo(newAlphaOffset)
                                     change.consume()
                                 }
                             }
@@ -286,47 +225,41 @@ fun MainSpot(
                 contentAlignment = Alignment.TopCenter,
             ) {
 
-                val circle1Width = width * 2.1f
-                val circle1Height = width * 2.24f
-
-                val circle2Width = width * 2.17f
-                val circle2Height = width * 2.26f
-
                 DrawCircle(modifier = Modifier
                     .wrapContentSize()
                     .graphicsLayer {
-                        translationX = circle2Width.value / 2f - circle2Width.value / 1.8f
-                        translationY = (height.value * 0.7f) - circle2Height.value * 1.45f
+                        translationX = MainSpotCircleAnimation.circleTranslationX2(width)
+                        translationY = MainSpotCircleAnimation.circleTranslationY2(width, height)
                     }
                     .background(Color.Transparent),
-                    widthRate = 2.17f,
-                    heightRate = 2.26f,
+                    widthRate = CIRCLE_DIAMETER_WIDTH_RATE2,
+                    heightRate = CIRCLE_DIAMETER_HEIGHT_RATE2,
                     color = Color(0xFFDBE9FF),
-                    alpha = (offsetX.value / width.value).coerceIn(0f, 1f)
+                    alpha = (progress).coerceIn(0f, 1f)
                 )
 
                 DrawCircle(
                     modifier = Modifier
                         .wrapContentSize()
                         .graphicsLayer {
-                            translationX = -circle1Width.value / 1.3f
-                            translationY = height.value * 0.7f - circle1Height.value * 1.35f
+                            translationX = MainSpotCircleAnimation.circleTranslationX1(width)
+                            translationY = MainSpotCircleAnimation.circleTranslationY1(width, height)
                         }
                         .background(Color.Transparent),
-                    2.1f,
-                    2.24f,
+                    CIRCLE_DIAMETER_WIDTH_RATE1,
+                    CIRCLE_DIAMETER_HEIGHT_RATE1,
                     color = Color(0xFFE4F7FF),
-                    alpha = (offsetX.value / width.value).coerceIn(0f, 1f)
+                    alpha = (progress).coerceIn(0f, 1f)
                 )
 
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .fillMaxHeight(0.7f)// 여기서는 Box의 크기를 지정해줍니다.
-                        .clip(BottomArcShape(1f - offsetX.value / width.value))
+                        .clip(BottomArcShape(1f - progress))
                         .background(
                             color = Color.Transparent,
-                            shape = BottomArcShape(1f - offsetX.value / width.value)
+                            shape = BottomArcShape(1f - progress)
                         )
                 ) {
                     // Box 내부에 들어갈 내용
@@ -334,7 +267,7 @@ fun MainSpot(
                         modifier = Modifier
                             .fillMaxWidth()
                             .wrapContentHeight()
-                            .alpha((offsetX.value / width.value).coerceIn(0f, 1f)),
+                            .alpha((progress).coerceIn(0f, 1f)),
                         state = rememberPagerState { 3 },
                         pageSpacing = 0.dp,
                         userScrollEnabled = true,
@@ -352,7 +285,7 @@ fun MainSpot(
                                     .fillMaxWidth()
                                     .fillMaxHeight()
                                     .background(Color.Transparent)
-                                    .alpha((offsetX.value / width.value).coerceIn(0f, 1f)),
+                                    .alpha((progress).coerceIn(0f, 1f)),
                                 model = when (it) {
                                     0 -> R.drawable.test_image
                                     1 -> R.drawable.test_image2
@@ -380,10 +313,7 @@ fun MainSpot(
                     x = offsetX.value.dp - width
                 )
                 .alpha(
-                    (1f - ((width.value - offsetX.value) / (width.value * 0.416f))).coerceIn(
-                        0f,
-                        1f
-                    )
+                    (1f - ((width.value - offsetX.value) / (width.value * 0.416f))).coerceIn(0f, 1f)
                 )
         ) {
             MainSpotTextBox()
@@ -400,7 +330,13 @@ fun MainSpot(
 }
 
 @Composable
-fun SummaryView(width: Dp, height: Dp, tabBarHeight: Dp = 40.dp, offset: Float, elementOffset: Float = 0f) {
+fun SummaryView(
+    width: Dp,
+    height: Dp,
+    tabBarHeight: Dp = 40.dp,
+    offset: Float,
+    elementOffset: Float = 0f
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -484,14 +420,7 @@ fun DrawCircle(
 
     // 무한 회전 애니메이션을 위한 Transition
     val infiniteTransition = rememberInfiniteTransition(label = "")
-    val angle = infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 20000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ), label = ""
-    )
+    val angle = infiniteTransition.infiniteRotation()
 
     Box(
         contentAlignment = Alignment.Center,
@@ -563,16 +492,4 @@ fun MainSpotTextBox(
             )
         }
     }
-}
-
-//@Preview(showBackground = true)
-@Composable
-fun MainPreview() {
-    val context = LocalContext.current
-    val configuration = context.resources.configuration
-    val width = configuration.screenWidthDp
-    val height = configuration.screenHeightDp
-
-//     BoxWithCircle(width = width.dp * 2.21f,  height = height.dp * 2.24f)
-//    EllipseWithDrawArc(width.dp * 2.21f, width.dp * 2.24f)
 }

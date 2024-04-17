@@ -116,7 +116,7 @@ fun HorizontalListView(
                     val infiniteTransition = rememberInfiniteTransition(label = "")
                     val bubbleMotion = infiniteTransition.animateFloat(
                         initialValue = 0f,
-                        targetValue = 20.dp.value,
+                        targetValue = 4.dp.value,
                         animationSpec = infiniteRepeatable(
                             animation = tween(
                                 durationMillis = totalDuration,

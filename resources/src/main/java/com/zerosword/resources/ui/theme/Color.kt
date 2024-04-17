@@ -19,6 +19,9 @@ val unselectedTextColor = Color(0xFFCDCDCD)
 val gradientStartColor = Color(0xFF9FE2FF)
 val gradientEndColor = Color(0xFFC0CEFF)
 
+val gradientStartColor60 = Color(0x999FE2FF)
+val gradientEndColor60 = Color(0x99C0CEFF)
+
 fun Modifier.gradientTextColor(startColor: Color, endColor: Color) = this
     .graphicsLayer(alpha = 0.99f)
     .drawWithCache {

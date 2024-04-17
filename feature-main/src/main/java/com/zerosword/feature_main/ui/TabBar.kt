@@ -2,8 +2,8 @@ package com.zerosword.feature_main.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,11 +21,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
+import com.tenfingers.feature_popick.view.GradientBorderBox
 import com.zerosword.resources.ui.compose.ResizableScrollableTabRow
 import com.zerosword.resources.ui.theme.gradientBrush
 import com.zerosword.resources.ui.theme.gradientEndColor
@@ -34,50 +35,68 @@ import com.zerosword.resources.ui.theme.gradientTextColor
 import com.zerosword.resources.ui.theme.title14
 import com.zerosword.resources.ui.theme.unselectedTextColor
 
-@OptIn(ExperimentalGlideComposeApi::class)
+
 @Composable
 fun ScrollableCustomTabBarExample(
     modifier: Modifier,
-    tabBarHeight: Dp = 40.dp,
-    selectedTabIndexState: MutableIntState
+    padding: PaddingValues = PaddingValues(0.dp),
+    selectedTabIndexState: MutableIntState,
+    onClick: (index: Int) -> Unit = {}
 ) {
-    val tabs = listOf("Home", "List")
+    val tabs = listOf("메인스팟", "데이트 시작")
     val arrowWidth = 56.dp
-    Box(modifier.fillMaxWidth().height(tabBarHeight).background(Color.Transparent)) {
+    Box(
+        modifier
+            .fillMaxWidth()
+            .padding(padding)
+            .background(Color.Transparent)
+    ) {
 
         ResizableScrollableTabRow(
             modifier = Modifier
                 .background(Color.Transparent)
                 .wrapContentWidth()
-                .padding(start = 40.dp)
+                .padding(start = 16.dp)
                 .fillMaxHeight(),
-            minItemWidth = 20.dp,
+            minItemWidth = 0.dp,
             selectedTabIndex = selectedTabIndexState.intValue,
-            edgePadding = 0.dp,
             containerColor = Color.Transparent,
             contentColor = Color.Transparent,
             indicator = {},
             divider = {},
         ) {
             tabs.forEachIndexed { index, text ->
-                Box(
-                    modifier = Modifier
-                        .clickable { selectedTabIndexState.intValue = index }
-                        .background(Color.Transparent)
-                        .padding(horizontal = 8.dp),
-                    contentAlignment = Alignment.Center
+
+                GradientBorderBox(
+                    Modifier
+                        .background(Color.Transparent),
+                    enableBorder = index == selectedTabIndexState.intValue,
+                    outerPaddingValues = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
+                    innerPaddingValues = PaddingValues(horizontal = 12.dp, vertical = 9.dp),
+                    onClick = {
+                        selectedTabIndexState.intValue = index
+                        onClick(index)
+                        println("click")
+                    }
                 ) {
+
                     Text(
                         text = text,
-                        modifier =
-                        if (selectedTabIndexState.intValue == index)
-                            Modifier.gradientTextColor(gradientStartColor, gradientEndColor)
-                        else {
-                            Modifier.gradientTextColor(unselectedTextColor, unselectedTextColor)
-                        }.background(Color.Transparent)
-                            .padding(horizontal = 12.dp, vertical = 9.dp),
+                        modifier = Modifier
+                            .padding(0.dp)
+                            .wrapContentWidth()
+                            .wrapContentHeight()
+                            .let {
+                                if (selectedTabIndexState.intValue == index)
+                                    it.gradientTextColor(gradientStartColor, gradientEndColor)
+                                else {
+                                    it.gradientTextColor(unselectedTextColor, unselectedTextColor)
+                                }
+                            },
+                        textAlign = TextAlign.Center,
                         style = title14
                     )
+
                 }
             }
         }
@@ -97,6 +116,7 @@ fun ScrollableCustomTabBarExample(
                     .wrapContentHeight()
                     .background(Color.Transparent),
                 imageVector = arrow,
+                contentScale = ContentScale.FillWidth,
                 contentDescription = null,
             )
         }
@@ -105,14 +125,13 @@ fun ScrollableCustomTabBarExample(
 }
 
 
-@Preview(showBackground = true)
+//@Preview(showBackground = true)
 @Composable
 fun TabBarPreview() {
     ScrollableCustomTabBarExample(
         Modifier
             .fillMaxSize()
             .height(40.dp),
-        tabBarHeight = 40.dp,
         selectedTabIndexState = remember {
             mutableIntStateOf(0)
         }
